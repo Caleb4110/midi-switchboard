@@ -6,7 +6,15 @@
 
 MIDI_CREATE_DEFAULT_INSTANCE();
 
-Pot *c_vol = new Pot(A0, 73);
+// Initialise potentiometers
+Pot pots[4] = {
+  Pot(A0, 73),
+  Pot(A1, 75),
+  Pot(A2, 77),
+  Pot(A3, 79),
+};
+
+
 EncoderButton preset_enc(2, 3, 4);
 
 void on_encoder_change(EncoderButton& eb) {
@@ -18,7 +26,10 @@ void on_encoder_change(EncoderButton& eb) {
 
 // Update all controls at once
 void update() {
-  c_vol->update();
+  pots[character].update();
+  pots[movement].update();
+  pots[diffusion].update();
+  pots[texture].update();
   preset_enc.update();
 }
 
@@ -38,5 +49,8 @@ void setup() {
 }
 
 void loop() {
+  // Update all control values
   update();
+
+  // Send appropriate MIDI signals
 }
