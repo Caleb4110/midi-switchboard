@@ -1,56 +1,61 @@
 #include "calebIO.h"
 #include <stdint.h>
-#include <MIDI.h>
 #include "common.h"
-#include <EncoderButton.h>
-
-MIDI_CREATE_DEFAULT_INSTANCE();
+#include <Encoder.h>
 
 // Initialise potentiometers
-Pot pots[4] = {
+/*
+Pot pots[NUM_POTS] = {
   Pot(A0, 73),
   Pot(A1, 75),
   Pot(A2, 77),
   Pot(A3, 79),
 };
+*/
+Pot charPot = Pot(A0, 73, 3);
+// Initialise encoder switch
 
 
-EncoderButton preset_enc(2, 3, 4);
-
-void on_encoder_change(EncoderButton& eb) {
-  Serial.print("preset incremented by: ");
-  Serial.println(eb.increment());
-  Serial.print("preset position is: ");
-  Serial.println(eb.position());
-}
+Encoder encoder(2, 3);
 
 // Update all controls at once
 void update() {
+  /*
   pots[character].update();
   pots[movement].update();
   pots[diffusion].update();
   pots[texture].update();
-  preset_enc.update();
+  */
+  charPot.update();
 }
 
-void send_cc(uint8_t control_num, uint8_t val) {
-  MIDI.sendControlChange(control_num, val, MIDI_CHANNEL);
+void update_encoder() {
+  Serial.print("encoder changed: ");
+  Serial.println(encoder.read());
 }
 
 void setup() {
-	pinMode(LED_BUILTIN, OUTPUT);
-  preset_enc.setEncoderHandler(on_encoder_change);
+  pinMode(2, INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(2), update_encoder, CHANGE);
 
   Serial.begin(9600);
   while (!Serial);
 
-  // MIDI.begin(MIDI_CHANNEL);
   Serial.println("MIDI controller ready");
 }
 
 void loop() {
   // Update all control values
   update();
-
-  // Send appropriate MIDI signals
+  /*
+  // Send appropriate MIDI signals if value has changed
+  for (uint8_t i = 0; i < NUM_POTS; i++) {
+    if (pots[character].has_changed()) {
+      Serial.println("changed");
+    }
+  }
+  */
+  if (charPot.has_changed()) {
+    Serial.println(charPot.read());
+  }
 }
