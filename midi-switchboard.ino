@@ -2,60 +2,74 @@
 #include <stdint.h>
 #include "common.h"
 #include <Encoder.h>
+#include <Wire.h>
+
+// Initialise module switches
+ModuleSwitch switches[NUM_MODULES] = {
+  ModuleSwitch(CHAR_SW_PIN, CHAR_SW_CC),
+  // ModuleSwitch(MOV_SW_PIN, MOV_SW_CC),
+  // ModuleSwitch(DIFF_SW_PIN, DIFF_SW_CC),
+  // ModuleSwitch(TEX_SW_PIN, TEX_SW_CC),
+};
 
 // Initialise potentiometers
-/*
-Pot pots[NUM_POTS] = {
-  Pot(A0, 73),
-  Pot(A1, 75),
-  Pot(A2, 77),
-  Pot(A3, 79),
+Pot pots[NUM_MODULES] = {
+  Pot(CHAR_VOL_PIN, CHAR_VOL_CC, 5),
+  // Pot(MOV_VOL_PIN, MOV_VOL_CC),
+  // Pot(DIFF_VOL_PIN, DIFF_VOL_CC),
+  // Pot(TEX_VOL_PIN, TEX_VOL_CC),
 };
-*/
-Pot charPot = Pot(A0, 73, 3);
-// Initialise encoder switch
 
-
-Encoder encoder(2, 3);
-
-// Update all controls at once
-void update() {
-  /*
-  pots[character].update();
-  pots[movement].update();
-  pots[diffusion].update();
-  pots[texture].update();
-  */
-  charPot.update();
+// Update all pots at once
+void updateControls() {
+  for (uint8_t i = 0; i < NUM_MODULES; i++) {
+    pots[i].update();
+  }
 }
 
-void update_encoder() {
-  Serial.print("encoder changed: ");
-  Serial.println(encoder.read());
+// Send MIDI to the DIN connector
+void sendMIDI(uint8_t type, uint8_t channel, uint8_t data1, uint8_t data2) {
+  uint8_t status = 0x80 | (type << 4) | channel;
+
+  Serial.write(status);
+  Serial.write(data1);
+  Serial.write(data2);
 }
 
 void setup() {
-  pinMode(2, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(2), update_encoder, CHANGE);
-
-  Serial.begin(9600);
-  while (!Serial);
-
-  Serial.println("MIDI controller ready");
+  Serial.begin(31250); // MIDI standard baud rate
 }
 
 void loop() {
   // Update all control values
-  update();
-  /*
-  // Send appropriate MIDI signals if value has changed
-  for (uint8_t i = 0; i < NUM_POTS; i++) {
-    if (pots[character].has_changed()) {
-      Serial.println("changed");
+  updateControls();
+
+  // Loop through each effect module
+  for (uint8_t i = 0; i < NUM_MODULES; i++) {
+    // Send MIDI CC if pot value changed
+    if (pots[i].hasChanged()) {
+      sendMIDI(ControlChange, MIDI_CHANNEL, pots[i].getCcNum(), pots[i].read());
+    }
+
+    // Send MIDI CC if switch event occurred
+    Event event = switches[i].readEvent();
+    switch (event) {
+      case NoEvent:
+        break;
+
+      case Click:
+        switches[i].incrEffect();
+        sendMIDI(ControlChange, MIDI_CHANNEL, switches[i].getCcNum(), effects[switches[i].getCurrEffect()]);
+        break;
+
+      case LongPress:
+        switches[i].decrEffect();
+        sendMIDI(ControlChange, MIDI_CHANNEL, switches[i].getCcNum(), effects[5]);
+        break;
+
+      default:
+        break;
     }
   }
-  */
-  if (charPot.has_changed()) {
-    Serial.println(charPot.read());
-  }
 }
+
